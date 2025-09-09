@@ -1,7 +1,6 @@
-name: Run MPAS Standalone (NOAA GSL HRRRv5 tests)
+name: Run MPAS Standalone (NOAA GSL tests)
 
-#on: [push, pull_request, workflow_dispatch]
-on: [workflow_dispatch]
+on: [push, pull_request, workflow_dispatch]
 
 #############################################################################################
 # Testing script/workflow for ufs-community fork of MPAS-Dev/MPAS-A.
@@ -28,25 +27,31 @@ on: [workflow_dispatch]
 # <branch>  - Baseline codebase repository branch.
 #
 # Tests:
-#        Baseline Codebase Repository:Branch  Physics   IC source   season   build-type
-# 1/4)   ufs-community:gsl/develop            hrrrv5    gfs         winter   Release/Debug
-# 2/5)   ufs-community:gsl/develop            hrrrv5    rap         summer   Release/Debug
-# 3/6)   ufs-community:gsl/develop            hrrrv5    rap         winter   Release/Debug
+#        Baseline Codebase Repository:Branch   Physics                       build type
+# 1/7)   MPAS-Dev:v8.3.0                       mesoscale_reference           Release/Debug
+# 2/8)   MPAS-Dev:v8.3.0                       convection_permitting         Release/Debug
+# 3/9)   MPAS-Dev:v8.3.0                       mesoscale_reference_noahmp    Release/Debug
+# 4/10)  ufs-community:gsl/develop             mesoscale_reference           Release/Debug
+# 5/11)  ufs-community:gsl/develop             convection_permitting         Release/Debug
+# 6/12)  ufs-community:gsl/develop             mesoscale_reference_noahmp    Release/Debug
 #
 #############################################################################################
 jobs:
-  run_mpas_hrrr:   
+  run_mpas:   
     # 
     runs-on: ubuntu-22.04
     strategy:
       fail-fast: false  # Disable fail-fast
       matrix:
-        ic_source:  [gfs, rap]
-        season:     [summer, winter]
-        build-type: [Release]
+        physics:    [mesoscale_reference, convection_permitting, mesoscale_reference_noahmp]
+        repo:       [ufs-community, MPAS-Dev]
+        branch:     [gsl/develop, v8.3.0]
+        build-type: [Release, Debug]
         exclude:
-          - ic_source: gfs
-            season: summer
+          - repo: MPAS-Dev
+            branch: gsl/develop
+          - repo: ufs-community
+            branch: v8.3.0
     # 
     defaults:
       run:
@@ -54,10 +59,7 @@ jobs:
 
     # Environmental variables
     env:
-      physics:           hrrrv5
-      repo:              ufs-community
-      branch:            gsl/develop
-      fortran-compiler:  gfortran-12
+      fortran-compiler:  intel
       py-version:        3.11
       runner_ROOT:       /home/runner
       mpas_rt_ROOT:      /home/runner/work/MPAS-Model
@@ -69,18 +71,22 @@ jobs:
       LIBTOOL_VERSION:   2.5.4
       PNETCDF:           /home/runner/PnetCDF
       AUTOTOOLS:         /home/runner/AUTOTOOLS
-      OMPI:              /home/runner/ompi-4.1.6
+      OMPI:              /opt/intel/oneapi/mpi/2021.10.0
       grid_dir:          thredds/catalog/retro/mpas_ci/mpas_test_data/grid
       case_dir:          retro/mpas_ci/mpas_test_data/run_case_input/create_case_output
       mpdata_dir:        retro/mpas_ci/mpas_test_data/run_case_input/tables
+      ic_source:         gfs
       domain:            conus
       res:               120km
       nproc:             2
-      nml:               gsl
-      case_base:         gsl-v8.3.0-1.8-intelmpi
-      code_base:         gsl
-      nml_version:       gsl
-
+      yyyy:              "2023"
+      mm:                "03"
+      dd:                "10"
+      hh:                "15"
+      nml:               ncar
+      case_base:         ncar-v8.3.0-intelmpi
+      code_base:         ncar
+      nml_version:       ncar
 
     # Workflow steps
     steps:
@@ -88,33 +94,22 @@ jobs:
     ##########################################################################################
     # Step 0: Build Software Stack needed for MPAS on GitHub server.
     ##########################################################################################
+    - name: "Install Intel compilers & MPI"
+      uses: NOAA-EMC/ci-install-intel-toolkit@develop
+      with:
+        install-mpi: true
+
+    - name: Cache Intel
+      id: cache-INTEL
+      uses: actions/cache@v4
+      with:
+	path: /opt/intel/oneapi/mpi/2021.10.0
+        key: cache-AUTOTOOLS-${{env.fortran-compiler}}-key
+
     - name: Install NetCDF library
       run: |
         sudo apt-get update
         sudo apt-get install libnetcdff-dev
-
-    - name: Cache openmpi
-      id: cache-openmpi
-      uses: actions/cache@v4
-      with:
-        path: /home/runner/ompi-4.1.6
-        key: cache-openmpi-${{env.fortran-compiler}}-key
-
-    - name: Install openmpi
-      if: steps.cache-openmpi.outputs.cache-hit != 'true'
-      run: |
-        wget https://github.com/open-mpi/ompi/archive/refs/tags/v4.1.6.tar.gz
-        tar -xvf v4.1.6.tar.gz
-        cd ompi-4.1.6
-        ./autogen.pl
-        ./configure --prefix=${OMPI}
-        make -j4
-        make install
-
-    - name: Add (OMPI) to Paths
-      run: |
-        echo "LD_LIBRARY_PATH=${OMPI}/lib:$LD_LIBRARY_PATH" >> $GITHUB_ENV
-        echo "PATH=${OMPI}/bin:$PATH" >> $GITHUB_ENV
 
     - name: Cache GNU autotools
       id: cache-AUTOTOOLS
@@ -156,11 +151,6 @@ jobs:
         echo "LD_LIBRARY_PATH=${AUTOTOOLS}/lib:$LD_LIBRARY_PATH" >> $GITHUB_ENV
         echo "PATH=${AUTOTOOLS}/bin:$PATH" >> $GITHUB_ENV
 
-    - name: Add (autotools) to Paths
-      run: |
-        echo "LD_LIBRARY_PATH=${AUTOTOOLS}/lib:$LD_LIBRARY_PATH" >> $GITHUB_ENV
-        echo "PATH=${AUTOTOOLS}/bin:$PATH" >> $GITHUB_ENV
-
     - name: Cache PnetCDF
       id: cache-pnetcdf
       uses: actions/cache@v4
@@ -196,36 +186,22 @@ jobs:
     ##########################################################################################
     # Step 1: Setup configuration for current test
     ##########################################################################################
-    - name: Set tests start time (GFS case)
-      if: contains(matrix.ic_source, 'gfs')
+    - name: Configuration for MPAS-Dev (baseline) tests.
+      if: contains(matrix.repo, 'MPAS-Dev')
       run: |
-        echo "yyyy=2023" >> $GITHUB_ENV
-        echo "mm=03"     >> $GITHUB_ENV
-        echo "dd=10"     >> $GITHUB_ENV
-        echo "hh=15"     >> $GITHUB_ENV
+        echo "nml_suffix=ncar" >> $GITHUB_ENV
 
-    - name: Set test start time (RAP summer case).
-      if: contains(matrix.season, 'summer') && contains(matrix.ic_source, 'rap')
+    - name: Configuration for ufs-community (baseline) tests.
+      if: contains(matrix.repo, 'ufs-community')
       run: |
-        echo "yyyy=2024" >> $GITHUB_ENV
-        echo "mm=08"     >> $GITHUB_ENV
-        echo "dd=15"     >> $GITHUB_ENV
-        echo "hh=18"     >> $GITHUB_ENV
+        echo "nml_suffix=gsl" >> $GITHUB_ENV
 
-    - name: Set test start time (RAP winter case).
-      if: contains(matrix.season, 'winter') && contains(matrix.ic_source, 'rap')
-      run: |
-        echo "yyyy=2024" >> $GITHUB_ENV
-        echo "mm=02"     >> $GITHUB_ENV
-        echo "dd=02"     >> $GITHUB_ENV
-        echo "hh=18"     >> $GITHUB_ENV
- 
     - name: Set test variables.
       id: set_vars
       run: |
-        echo "init_file=mpas.${code_base}.${nml}.${domain}.${res}.${{matrix.ic_source}}.init.${yyyy}'-'${mm}'-'${dd}'_'${hh}'.00.00'.nc" >> $GITHUB_OUTPUT
-        echo "lbc_file=mpas.${code_base}.${nml}.${domain}.${res}.${{matrix.ic_source}}.lbc.${yyyy}'-'${mm}'-'${dd}'_'${hh}'.00.00'.nc" >> $GITHUB_OUTPUT
-        echo "sst_file=mpas.${code_base}.${nml}.${domain}.${res}.${{matrix.ic_source}}.sfc_update.${yyyy}'-'${mm}'-'${dd}'_'${hh}'.00.00'.nc" >> $GITHUB_OUTPUT
+        echo "init_file=mpas.${code_base}.${nml}.${domain}.${res}.${ic_source}.init.${yyyy}'-'${mm}'-'${dd}'_'${hh}'.00.00'.nc" >> $GITHUB_OUTPUT
+        echo "lbc_file=mpas.${code_base}.${nml}.${domain}.${res}.${ic_source}.lbc.${yyyy}'-'${mm}'-'${dd}'_'${hh}'.00.00'.nc" >> $GITHUB_OUTPUT
+        echo "sst_file=mpas.${code_base}.${nml}.${domain}.${res}.${ic_source}.sfc_update.${yyyy}'-'${mm}'-'${dd}'_'${hh}'.00.00'.nc" >> $GITHUB_OUTPUT
         echo "ugwp_file=mpas.${code_base}.${nml}.${domain}.${res}.ugwp_oro_data.nc" >> $GITHUB_OUTPUT
 
     - name: Display configuration
@@ -234,15 +210,20 @@ jobs:
         echo ${{steps.set_vars.outputs.lbc_file}}
         echo ${{steps.set_vars.outputs.sst_file}}
         echo ${{steps.set_vars.outputs.ugwp_file}}
+        echo ${nml}
+        echo ${nml_version}
+        echo ${code_base}
+        echo ${case_base}
 
      ##########################################################################################
      # Step 2: Clone MPAS and build.
      ##########################################################################################
+
     - name: Checkout and build MPAS standalone for baseline generation (Debug)
       if: contains(matrix.build-type, 'Debug')
       run: |
         cd ${runner_ROOT}
-        git clone --recursive --branch ${{env.branch}} https://github.com/${{env.repo}}/MPAS-Model.git MPAS-Model-BL
+        git clone --recursive --branch ${{matrix.branch}} https://github.com/${{matrix.repo}}/MPAS-Model.git MPAS-Model-BL
         cd ${mpas_bl_ROOT}
         make gfortran CORE=atmosphere DEBUG=true
 
@@ -250,7 +231,7 @@ jobs:
       if: contains(matrix.build-type, 'Release')
       run: |
         cd ${runner_ROOT}
-        git clone --recursive --branch ${{env.branch}} https://github.com/${{env.repo}}/MPAS-Model.git MPAS-Model-BL
+        git clone --recursive --branch ${{matrix.branch}} https://github.com/${{matrix.repo}}/MPAS-Model.git MPAS-Model-BL
         cd ${mpas_bl_ROOT}
         make gfortran CORE=atmosphere
 
@@ -281,8 +262,8 @@ jobs:
         cd ${mpas_run_ROOT} && mkdir run_data && cd run_data
         wget -q https://gsl.noaa.gov/${grid_dir}/${domain}.${res}.graph.info.part.${nproc}
         wget -q -e robots=off -nH --cut-dirs N -nc -r -lX -A '*' -R 'catalog*' -I /thredds/fileServer/,/thredds/catalog/ \
-        https://gsl.noaa.gov/thredds/catalog/${case_dir}/${case_base}/${nml}.${code_base}.${domain}.${res}.${{matrix.ic_source}}.${yyyy}${mm}${dd}${hh}/case_files/catalog.html
-        mv thredds/fileServer/${case_dir}/${case_base}/${nml}.${code_base}.${domain}.${res}.${{matrix.ic_source}}.${yyyy}${mm}${dd}${hh}/case_files/* .
+        https://gsl.noaa.gov/thredds/catalog/${case_dir}/${case_base}/${nml}.${code_base}.${domain}.${res}.${ic_source}.${yyyy}${mm}${dd}${hh}/case_files/catalog.html
+        mv thredds/fileServer/${case_dir}/${case_base}/${nml}.${code_base}.${domain}.${res}.${ic_source}.${yyyy}${mm}${dd}${hh}/case_files/* .
         rm -rf thredds
 
     - name: Download MPAS testing repository with runtime configurations.
@@ -290,20 +271,20 @@ jobs:
         cd ${mpas_run_ROOT}
         git clone --recursive --branch main https://github.com/barlage/mpas_testcase.git
 
-    - name: Cache TEMPO MP tables
-      id: cache-tempo-data
+    - name: Cache Thompson MP tables
+      id: cache-thompson-data
       uses: actions/cache@v4
       with:
-        path: /home/runner/tempo
-        key: cache-tempo-data-key
+        path: /home/runner/thompson
+        key: cache-thompson-data-key
 
-    - name: Download TEMPO MP tables
-      if: steps.cache-tempo-data.outputs.cache-hit != 'true'
+    - name: Download Thompson MP tables
+      if: steps.cache-thompson-data.outputs.cache-hit != 'true'
       run: |
-        cd ${runner_ROOT} && mkdir tempo && cd tempo
+        cd ${runner_ROOT} && mkdir thompson && cd thompson
         wget -q -e robots=off -nH --cut-dirs N -nc -r -lX -A '*' -R 'catalog*' -I /thredds/fileServer/,/thredds/catalog/ \
-        https://gsl.noaa.gov/thredds/catalog/${mpdata_dir}/tempo/catalog.html
-        mv thredds/fileServer/${mpdata_dir}/tempo/* .
+        https://gsl.noaa.gov/thredds/catalog/${mpdata_dir}/thompson/catalog.html
+        mv thredds/fileServer/${mpdata_dir}/thompson/* .
         rm -rf thredds
 
     - name: Cache UGWD data
@@ -328,29 +309,28 @@ jobs:
     - name: Create and populate run directory (baselines)
       run: |
         cd ${mpas_run_ROOT} && mkdir run_bl && cd run_bl
-        cp ${mpas_run_ROOT}/mpas_testcase/run_case/case_files/${nml_version}/${domain}/${{matrix.ic_source}}.${yyyy}${mm}${dd}${hh}/${{env.physics}}/* .
+        cp ${mpas_run_ROOT}/mpas_testcase/run_case/case_files/${nml_version}/${domain}/${ic_source}.${yyyy}${mm}${dd}${hh}/${{matrix.physics}}/* .
         ln -sf ${mpas_bl_ROOT}/src/core_atmosphere/physics/physics_wrf/files/*.TBL .
         ln -sf ${mpas_bl_ROOT}/src/core_atmosphere/physics/physics_wrf/files/*.DBL .
         ln -sf ${mpas_bl_ROOT}/src/core_atmosphere/physics/physics_wrf/files/*DATA .
         ln -sf ${mpas_bl_ROOT}/src/core_atmosphere/physics/physics_noahmp/parameters/NoahmpTable.TBL .
         ln -sf ${mpas_run_ROOT}/run_data/${{steps.set_vars.outputs.init_file}} mpas.init.nc
         ln -sf ${mpas_run_ROOT}/run_data/${domain}.${res}.graph.info.part.${nproc} graph.info.part.${nproc}
-        ln -sf ${mpas_bl_ROOT}/atmosphere_model atmosphere_model
-        ln -sf ${mpas_run_ROOT}/run_data/${{steps.set_vars.outputs.ugwp_file}} mpas.ugwp_oro_data.nc
-        ln -sf ${runner_ROOT}/tempo/* .
-        ln -sf ${runner_ROOT}/ugw/ugwp_limb_tau.nc .
+        ln -sf /home/runner/MPAS-Model-BL/atmosphere_model .
+        ln -sf ${mpas_run_ROOT}/run_data/${{steps.set_vars.outputs.sst_file}} mpas.sfc_update.nc
+        ln -sf namelist.atmosphere.${{env.nml_suffix}} namelist.atmosphere
 
-    - name: Link lateral boundary condition file for regional MPAS (baselines).
+    - name: Link lateral boundary condition file for regional MPAS.
       if: env.domain == 'conus'
       run: |
         cd ${mpas_run_ROOT}/run_bl
         ln -sf ${mpas_run_ROOT}/run_data/${{steps.set_vars.outputs.lbc_file}} mpas.lbc.nc
 
-    - name: Link surface files to run directory (baselines)
-      if: ${{matrix.ic_source}} == 'gfs'
+    - name: Link Thompson MP data tables to run directory
+      if: contains(matrix.physics, 'convection_permitting')
       run: |
         cd ${mpas_run_ROOT}/run_bl
-        ln -sf ${mpas_run_ROOT}/run_data/${{steps.set_vars.outputs.sst_file}} mpas.sfc_update.nc
+        cp ${runner_ROOT}/thompson/* .
 
     ##########################################################################################
     # Step 4b: Configure MPAS feature runs
@@ -358,29 +338,28 @@ jobs:
     - name: Create and populate run directory (feature test)
       run: |
         cd ${mpas_run_ROOT} && mkdir run_rt && cd run_rt
-        cp ${mpas_run_ROOT}/mpas_testcase/run_case/case_files/${nml_version}/${domain}/${{matrix.ic_source}}.${yyyy}${mm}${dd}${hh}/${{env.physics}}/* .
+        cp ${mpas_run_ROOT}/mpas_testcase/run_case/case_files/${nml_version}/${domain}/${ic_source}.${yyyy}${mm}${dd}${hh}/${{matrix.physics}}/* .
         ln -sf ${mpas_rt_ROOT}/MPAS-Model/src/core_atmosphere/physics/physics_wrf/files/*.TBL .
         ln -sf ${mpas_rt_ROOT}/MPAS-Model/src/core_atmosphere/physics/physics_wrf/files/*.DBL .
         ln -sf ${mpas_rt_ROOT}/MPAS-Model/src/core_atmosphere/physics/physics_wrf/files/*DATA .
         ln -sf ${mpas_rt_ROOT}/MPAS-Model/src/core_atmosphere/physics/physics_noahmp/parameters/NoahmpTable.TBL .
         ln -sf ${mpas_run_ROOT}/run_data/${{steps.set_vars.outputs.init_file}} mpas.init.nc
         ln -sf ${mpas_run_ROOT}/run_data/${domain}.${res}.graph.info.part.${nproc} graph.info.part.${nproc}
-        ln -sf ${mpas_rt_ROOT}/MPAS-Model/atmosphere_model atmosphere_model
-        ln -sf ${mpas_run_ROOT}/run_data/${{steps.set_vars.outputs.ugwp_file}} mpas.ugwp_oro_data.nc
-        ln -sf ${runner_ROOT}/tempo/* .
-        ln -sf ${runner_ROOT}/ugw/ugwp_limb_tau.nc .
+        ln -sf ${mpas_rt_ROOT}/MPAS-Model/atmosphere_model .
+        ln -sf ${mpas_run_ROOT}/run_data/${{steps.set_vars.outputs.sst_file}} mpas.sfc_update.nc
+        ln -sf namelist.atmosphere.gsl namelist.atmosphere
 
-    - name: Link lateral boundary condition file for regional MPAS (feature)
+    - name: Link lateral boundary condition file for regional MPAS.
       if: env.domain == 'conus'
       run: |
         cd ${mpas_run_ROOT}/run_rt
         ln -sf ${mpas_run_ROOT}/run_data/${{steps.set_vars.outputs.lbc_file}} mpas.lbc.nc
 
-    - name: Link surface files to run directory (feature)
-      if: ${{matrix.ic_source}} == 'gfs'
+    - name: Link Thompson MP data tables to run directory
+      if: contains(matrix.physics, 'convection_permitting')
       run: |
         cd ${mpas_run_ROOT}/run_rt
-        ln -sf ${mpas_run_ROOT}/run_data/${{steps.set_vars.outputs.sst_file}} mpas.sfc_update.nc
+        cp ${runner_ROOT}/thompson/* .
 
     ##########################################################################################
     # Step 5: Run MPAS
@@ -412,6 +391,7 @@ jobs:
         activate-environment: mpas-ci-env
 
     - name: Run comparison script
+      id: cmp
       run: |
         cd ${mpas_rt_ROOT}/MPAS-Model/testing_and_setup/ufs-community
         ./cmp_rt2bl.py --dir_rt ${mpas_run_ROOT}/run_rt --dir_bl ${mpas_run_ROOT}/run_bl
@@ -422,8 +402,8 @@ jobs:
     - name: Create GitHub artifact
       run: |
         cd ${runner_ROOT}
-        mkdir artifact-${{env.fortran-compiler}}-${{matrix.build-type}}-${{matrix.ic_source}}-${{matrix.season}}-${{env.physics}}
-        cd artifact-${{env.fortran-compiler}}-${{matrix.build-type}}-${{matrix.ic_source}}-${{matrix.season}}-${{env.physics}}
+        mkdir artifact-${{env.fortran-compiler}}-${{matrix.build-type}}-${{matrix.repo}}-${{matrix.physics}}
+        cd artifact-${{env.fortran-compiler}}-${{matrix.build-type}}-${{matrix.repo}}-${{matrix.physics}}
         mkdir data_bl && cd data_bl
         cp ${mpas_run_ROOT}/run_bl/log.atmosphere.*.out log.atmosphere.BL.out
         cp ${mpas_run_ROOT}/run_bl/history.*.nc .
@@ -437,5 +417,5 @@ jobs:
     - name: Upload log files as GitHub Artifact
       uses: actions/upload-artifact@v4
       with:
-        name: mpas-baselines-${{env.fortran-compiler}}-${{matrix.build-type}}-${{matrix.ic_source}}-${{matrix.season}}-${{env.physics}}
-        path: /home/runner/artifact-${{env.fortran-compiler}}-${{matrix.build-type}}-${{matrix.ic_source}}-${{matrix.season}}-${{env.physics}}
+        name: mpas-baselines-${{env.fortran-compiler}}-${{matrix.build-type}}-${{matrix.repo}}-${{matrix.physics}}
+        path: /home/runner/artifact-${{env.fortran-compiler}}-${{matrix.build-type}}-${{matrix.repo}}-${{matrix.physics}}
