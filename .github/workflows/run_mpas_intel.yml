@@ -1,4 +1,4 @@
-name: Run MPAS Standalone (NOAA GSL tests)
+name: Run Intel MPAS Standalone (NOAA GSL tests)
 
 on: [push, pull_request, workflow_dispatch]
 
@@ -37,7 +37,7 @@ on: [push, pull_request, workflow_dispatch]
 #
 #############################################################################################
 jobs:
-  run_mpas:   
+  run_mpas_intel:
     # 
     runs-on: ubuntu-22.04
     strategy:
@@ -225,7 +225,7 @@ jobs:
         cd ${runner_ROOT}
         git clone --recursive --branch ${{matrix.branch}} https://github.com/${{matrix.repo}}/MPAS-Model.git MPAS-Model-BL
         cd ${mpas_bl_ROOT}
-        make gfortran CORE=atmosphere DEBUG=true
+        make intel-mpi CORE=atmosphere DEBUG=true
 
     - name: Checkout and build MPAS standalone for baseline generation (Release)
       if: contains(matrix.build-type, 'Release')
@@ -233,7 +233,7 @@ jobs:
         cd ${runner_ROOT}
         git clone --recursive --branch ${{matrix.branch}} https://github.com/${{matrix.repo}}/MPAS-Model.git MPAS-Model-BL
         cd ${mpas_bl_ROOT}
-        make gfortran CORE=atmosphere
+        make intel-mpi CORE=atmosphere
 
     - name: Checkout MPAS codebase for testing.
       uses: actions/checkout@v3
@@ -246,13 +246,13 @@ jobs:
       if: contains(matrix.build-type, 'Debug')
       run: |
         cd ${mpas_rt_ROOT}/MPAS-Model
-        make gfortran CORE=atmosphere DEBUG=true
+        make intel-mpi CORE=atmosphere DEBUG=true
 
     - name: Build MPAS standalone for testing (Release)
       if: contains(matrix.build-type, 'Release')
       run: |
         cd ${mpas_rt_ROOT}/MPAS-Model
-        make gfortran CORE=atmosphere
+        make intel-mpi CORE=atmosphere
 
     ##########################################################################################
     # Step 3: Fetch any data/files needed for MPAS runs.

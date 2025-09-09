@@ -1,7 +1,6 @@
 name: Run MPAS Standalone (NOAA GSL tests)
 
-#on: [push, pull_request, workflow_dispatch]
-on: [workflow_dispatch]
+on: [push, pull_request, workflow_dispatch]
 
 #############################################################################################
 # Testing script/workflow for ufs-community fork of MPAS-Dev/MPAS-A.
@@ -60,7 +59,7 @@ jobs:
 
     # Environmental variables
     env:
-      fortran-compiler:  intel
+      fortran-compiler:  gfortran-12
       py-version:        3.11
       runner_ROOT:       /home/runner
       mpas_rt_ROOT:      /home/runner/work/MPAS-Model
@@ -72,7 +71,7 @@ jobs:
       LIBTOOL_VERSION:   2.5.4
       PNETCDF:           /home/runner/PnetCDF
       AUTOTOOLS:         /home/runner/AUTOTOOLS
-      OMPI:              /opt/intel/oneapi/mpi/2021.10.0
+      OMPI:              /home/runner/ompi-4.1.6
       grid_dir:          thredds/catalog/retro/mpas_ci/mpas_test_data/grid
       case_dir:          retro/mpas_ci/mpas_test_data/run_case_input/create_case_output
       mpdata_dir:        retro/mpas_ci/mpas_test_data/run_case_input/tables
@@ -95,22 +94,33 @@ jobs:
     ##########################################################################################
     # Step 0: Build Software Stack needed for MPAS on GitHub server.
     ##########################################################################################
-    - name: "Install Intel compilers & MPI"
-      uses: NOAA-EMC/ci-install-intel-toolkit@develop
-      with:
-        install-mpi: true
-
-    - name: Cache Intel
-      id: cache-INTEL
-      uses: actions/cache@v4
-      with:
-	path: /opt/intel/oneapi/mpi/2021.10.0
-        key: cache-AUTOTOOLS-${{env.fortran-compiler}}-key
-
     - name: Install NetCDF library
       run: |
         sudo apt-get update
         sudo apt-get install libnetcdff-dev
+
+    - name: Cache openmpi
+      id: cache-openmpi
+      uses: actions/cache@v4
+      with:
+        path: /home/runner/ompi-4.1.6
+        key: cache-openmpi-${{env.fortran-compiler}}-key
+
+    - name: Install openmpi
+      if: steps.cache-openmpi.outputs.cache-hit != 'true'
+      run: |
+        wget https://github.com/open-mpi/ompi/archive/refs/tags/v4.1.6.tar.gz
+        tar -xvf v4.1.6.tar.gz
+        cd ompi-4.1.6
+        ./autogen.pl
+        ./configure --prefix=${OMPI}
+        make -j4
+        make install
+
+    - name: Add (OMPI) to Paths
+      run: |
+        echo "LD_LIBRARY_PATH=${OMPI}/lib:$LD_LIBRARY_PATH" >> $GITHUB_ENV
+        echo "PATH=${OMPI}/bin:$PATH" >> $GITHUB_ENV
 
     - name: Cache GNU autotools
       id: cache-AUTOTOOLS
@@ -149,6 +159,11 @@ jobs:
         ./configure --prefix=${AUTOTOOLS} --silent
         make -s -j 8 install > qout 2>&1
         make -s -j 8 distclean >> qout 2>&1
+        echo "LD_LIBRARY_PATH=${AUTOTOOLS}/lib:$LD_LIBRARY_PATH" >> $GITHUB_ENV
+        echo "PATH=${AUTOTOOLS}/bin:$PATH" >> $GITHUB_ENV
+
+    - name: Add (autotools) to Paths
+      run: |
         echo "LD_LIBRARY_PATH=${AUTOTOOLS}/lib:$LD_LIBRARY_PATH" >> $GITHUB_ENV
         echo "PATH=${AUTOTOOLS}/bin:$PATH" >> $GITHUB_ENV
 
