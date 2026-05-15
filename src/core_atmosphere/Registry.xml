@@ -4974,6 +4974,7 @@
 
 #ifdef MPAS_UFS_DYCORE
 #include "physics/Registry_noahmp.xml"
+#include "../../../../../stochastic_physics/Registry_stoch_physics.xml"
 #endif
 
 </registry>
