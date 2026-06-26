@@ -497,6 +497,113 @@ set(ATMOSPHERE_CORE_SOURCES
     mpas_atm_halos.F
 )
 
+
+####################################################################################
+# BEGIN CCPP FRAMEWORK
+####################################################################################
+include(${CMAKE_SOURCE_DIR}/src/core_atmosphere/ccpp/cmake/ccpp_capgen.cmake)
+
+#------------------------------------------------------------------------------
+# SCHEME_FILES
+#------------------------------------------------------------------------------
+set(SCHEME_FILES_DIR "${CMAKE_SOURCE_DIR}/src/core_atmosphere/ccpp/ccpp-physics/physics")
+set(SCHEME_METADATA_FILES
+  "${SCHEME_FILES_DIR}/Interstitials/MPAS/MPAS_setup.meta"
+)
+
+# Create list of scheme source files from metadata files
+ccpp_source_files(SCHEME_FORTRAN_FILES ${SCHEME_METADATA_FILES})
+
+#------------------------------------------------------------------------------
+# HOST_FILES
+#------------------------------------------------------------------------------
+set(HOST_FILES_DIR "${CMAKE_SOURCE_DIR}/src/core_atmosphere/ccpp")
+set(HOST_METADATA_FILES
+   "${HOST_FILES_DIR}/data/MPAS_typedefs.meta"
+   "${HOST_FILES_DIR}/CCPP_driver.meta"
+)
+
+# Create list of host source files from metadata files
+ccpp_source_files(HOST_FORTRAN_FILES ${HOST_METADATA_FILES})
+message(INFO "${HOST_METADATA_FILES} --> ${HOST_FORTRAN_FILES}")
+
+set(HOST "mpas")
+
+#------------------------------------------------------------------------------
+# SUITE_FILES
+#------------------------------------------------------------------------------
+set(SUITE_FILES_DIR "${CMAKE_SOURCE_DIR}/src/core_atmosphere/ccpp/suites")
+if(DEFINED CCPP_SUITES)
+  # Take comma seperated string containing SDF names <CCPP_SUITES>,
+  # append <SUITE_FILES_DIR> as file prefix, append ".xml" file suffix,
+  # and replace "," with ";"
+  set(SUITE_FILES ${SUITE_FILES_DIR}/suite_${CCPP_SUITES})
+  string(REPLACE "," ".xml;${SUITE_FILES_DIR}/suite_" SUITE_FILES "${SUITE_FILES}")
+  set(SUITE_FILES "${SUITE_FILES}.xml")
+else()
+  set(SUITE_FILES
+    "${SUITE_FILES_DIR}/suite_MPAS_meso_ref.xml"
+  )
+endif()
+message(STATUS "Compiling the following SDFs: ${SUITE_FILES}")
+
+#------------------------------------------------------------------------------
+# Run ccpp_validator
+#------------------------------------------------------------------------------
+set(CCPP_VERBOSITY "2" CACHE STRING "Verbosity level of output (default: 0)")
+
+# By default, generated caps go in ccpp subdir
+set(OUTPUT_ROOT "${CMAKE_SOURCE_DIR}/src/core_atmosphere/ccpp")
+
+# Scheme files
+ccpp_validator(VERBOSITY ${CCPP_VERBOSITY}
+               SOURCE_FILES ${SCHEME_FORTRAN_FILES}
+               METADATA_FILES ${SCHEME_METADATA_FILES}
+               TYPE "SCHEME")
+# Host files
+ccpp_validator(VERBOSITY ${CCPP_VERBOSITY}
+               SOURCE_FILES ${HOST_FORTRAN_FILES}
+               METADATA_FILES ${HOST_METADATA_FILES}
+               TYPE "HOST")
+
+if(CCPP_32BIT)
+  message(STATUS "Compile CCPP slow physics with 32-bit precision")
+  set(CCPP_KINDS "kind_phys=REAL32")
+endif()
+
+#------------------------------------------------------------------------------
+# Run ccpp_capgen_ng
+#------------------------------------------------------------------------------
+ccpp_capgen(VERBOSITY ${CCPP_VERBOSITY}
+            HOSTFILES ${HOST_METADATA_FILES}
+            SCHEMEFILES ${SCHEME_METADATA_FILES}
+            SUITES ${SUITE_FILES}
+            HOST_NAME ${HOST}
+            OUTPUT_ROOT "${OUTPUT_ROOT}"
+            KIND_SPECS "${CCPP_KINDS}")
+
+# Retrieve the list of Fortran files required for test host from datatable.xml;
+# this includes capgen-generated files and dependencies inferred from metadata
+ccpp_datafile(DATATABLE "${OUTPUT_ROOT}/datatable.xml"
+              REPORT_NAME "--dependencies")
+set(CAPGEN_DEPENDENCIES ${CCPP_FILES})
+ccpp_datafile(DATATABLE "${OUTPUT_ROOT}/datatable.xml"
+              REPORT_NAME "--scheme-files")
+set(SCHEME_FORTRAN_FILES ${CCPP_FILES})
+ccpp_datafile(DATATABLE "${OUTPUT_ROOT}/datatable.xml"
+              REPORT_NAME "--capgen-files")
+set(CAPGEN_FILES ${CCPP_FILES})
+
+message(STATUS "List of capgen dependencies: ${CAPGEN_DEPENDENCIES}")
+message(STATUS "List of filtered scheme files: ${SCHEME_FORTRAN_FILES}")
+message(STATUS "List of capgen-generated files: ${CAPGEN_FILES}")
+
+#set_property(SOURCE ${CAPGEN_DEPENDENCIES} APPEND PROPERTY COMPILE_OPTIONS -nofree)
+
+####################################################################################
+# END CCPP FRAMEWORK
+####################################################################################
+
 ## Generated includes
 set(ATMOSPHERE_CORE_INCLUDES
     block_dimension_routines.inc
@@ -524,7 +631,11 @@ if (${DO_PHYSICS})
               ${ATMOSPHERE_CORE_PHYSICS_GFL_SOURCES}
               ${ATMOSPHERE_CORE_PHYSICS_SMOKE_SOURCES}
               ${ATMOSPHERE_CORE_DIAGNOSTIC_SOURCES}
-              ${ATMOSPHERE_CORE_DYNAMICS_SOURCES})
+              ${ATMOSPHERE_CORE_DYNAMICS_SOURCES}
+	      ${CAPGEN_DEPENDENCIES}
+	      ${SCHEME_FORTRAN_FILES}
+	      ${HOST_FORTRAN_FILES}
+	      ${CAPGEN_FILES})
 else ()
   add_library(core_atmosphere ${ATMOSPHERE_CORE_SOURCES}
               ${ATMOSPHERE_CORE_DIAGNOSTIC_SOURCES}

@@ -22,3 +22,9 @@
 [submodule "src/core_atmosphere/physics/physics_mmm"]
 	path = src/core_atmosphere/physics/physics_mmm
 	url = https://github.com/NCAR/MMM-physics.git
+[submodule "src/core_atmosphere/ccpp/ccpp-framework"]
+	path = src/core_atmosphere/ccpp/ccpp-framework
+	url = https://github.com/climbfuji/ccpp-framework.git
+[submodule "src/core_atmosphere/ccpp/ccpp-physics"]
+	path = src/core_atmosphere/ccpp/ccpp-physics
+	url = https://github.com/NCAR/ccpp-physics

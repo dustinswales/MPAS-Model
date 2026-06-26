@@ -1012,6 +1012,7 @@ module atm_core
       use mpas_atmphys_driver
       use mpas_atmphys_manager
       use mpas_atmphys_update
+      use CCPP_driver, only : ccpp_step
 #endif
       use mpas_atm_halos, only: exchange_halo_group
    
@@ -1043,6 +1044,8 @@ module atm_core
       if(moist_physics) then
          call physics_timetracker(domain,dt,clock,itimestep,xtime_s)
          call physics_driver(domain,itimestep,xtime_s,exchange_halo_group)
+         call ccpp_step('radiation')
+         call ccpp_step('physics')
       endif
 #endif
 
