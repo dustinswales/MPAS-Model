@@ -509,6 +509,8 @@ include(${CMAKE_SOURCE_DIR}/src/core_atmosphere/ccpp/cmake/ccpp_capgen.cmake)
 set(SCHEME_FILES_DIR "${CMAKE_SOURCE_DIR}/src/core_atmosphere/ccpp/ccpp-physics/physics")
 set(SCHEME_METADATA_FILES
   "${SCHEME_FILES_DIR}/Interstitials/MPAS/MPAS_setup.meta"
+  #"${SCHEME_FILES_DIR}/Interstitials/MPAS/MPAS_PBL_generic_pre.meta"
+  "${SCHEME_FILES_DIR}/Interstitials/MPAS/MPAS_PBL_generic_post.meta"
 )
 
 # Create list of scheme source files from metadata files

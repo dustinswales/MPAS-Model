@@ -5,4 +5,9 @@
   <group name="time_vary">
     <scheme>MPAS_setup</scheme>
   </group>
+  <!-- <physics></physics> -->
+  <group name="physics">
+    <!-- <scheme>MPAS_PBL_generic_pre</scheme> -->
+    <scheme>MPAS_PBL_generic_post</scheme>
+  </group>
 </suite>

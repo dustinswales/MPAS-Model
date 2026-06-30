@@ -385,6 +385,7 @@ module atm_core
       use mpas_atmphys_init
       use mpas_atmphys_init_tempo
       use mpas_atmphys_manager
+      use CCPP_driver, only : ccpp_step
 #endif
 
       implicit none
@@ -588,6 +589,11 @@ module atm_core
          !initialization of all physics:
          call physics_init(dminfo, stream_manager, clock, block % configs, mesh, diag, tend, state, 1,       &
                            diag_physics, diag_physics_noahmp, ngw_input, atm_input, sfc_input, output_noahmp)
+
+         !initialization of CCPP physics:
+         call ccpp_step('register')
+         call ccpp_step('init')
+         call ccpp_step('physics_init')
       endif
 #endif
    
@@ -1044,9 +1050,9 @@ module atm_core
       if(moist_physics) then
          call physics_timetracker(domain,dt,clock,itimestep,xtime_s)
          call physics_driver(domain,itimestep,xtime_s,exchange_halo_group)
-         call ccpp_step('radiation')
-         call ccpp_step('physics')
       endif
+      call ccpp_step('timestep_init')
+      call ccpp_step('physics')
 #endif
 
       call atm_timestep(domain, dt, currTime, itimestep, exchange_halo_group)
@@ -1065,6 +1071,7 @@ module atm_core
    
 #ifdef DO_PHYSICS
       use mpas_atmphys_finalize
+      use CCPP_driver, only : ccpp_step
 #endif
 
       implicit none
@@ -1095,6 +1102,8 @@ module atm_core
 
             block_ptr => block_ptr%next
          end do
+         !call ccpp_step('physics_final')
+         !call ccpp_step('final')
 #endif
 
       !

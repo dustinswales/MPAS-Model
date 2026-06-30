@@ -13,6 +13,7 @@
 
  use mpas_atmphys_utilities
  use mpas_atmphys_vars, only: l_mp_tables
+ use ccpp_driver, only: ccpp_suite
 
  implicit none
  private
@@ -105,7 +106,8 @@
                                   config_radt_cld_scheme,   &
                                   config_radt_lw_scheme,    &
                                   config_radt_sw_scheme,    &
-                                  config_sfclayer_scheme
+                                  config_sfclayer_scheme,   &
+                                  config_ccpp_physics_suite
  integer,pointer:: config_mynn_cloudpdf
  logical,pointer:: config_tempo_cldfra
 !-----------------------------------------------------------------------------------------------------------------
@@ -124,9 +126,13 @@
  call mpas_pool_get_config(configs,'config_sfclayer_scheme'  ,config_sfclayer_scheme  )
  call mpas_pool_get_config(configs,'config_tempo_cldfra'     ,config_tempo_cldfra     )
  call mpas_pool_get_config(configs,'config_mynn_cloudpdf'    ,config_mynn_cloudpdf    )
-
+ call mpas_pool_get_config(configs,'config_ccpp_physics_suite',config_ccpp_physics_suite    )
+      
  call mpas_log_write('')
  call mpas_log_write('----- Setting up physics suite '''//trim(config_physics_suite)//''' -----')
+
+ call mpas_log_write('----- Setting up CCPP physics suite '''//trim(config_ccpp_physics_suite)//''' -----')
+ ccpp_suite = config_ccpp_physics_suite
 
  !
  !setup schemes according to the selected physics suite:
