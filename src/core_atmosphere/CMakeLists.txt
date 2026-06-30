@@ -598,7 +598,7 @@ message(STATUS "List of capgen dependencies: ${CAPGEN_DEPENDENCIES}")
 message(STATUS "List of filtered scheme files: ${SCHEME_FORTRAN_FILES}")
 message(STATUS "List of capgen-generated files: ${CAPGEN_FILES}")
 
-#set_property(SOURCE ${CAPGEN_DEPENDENCIES} APPEND PROPERTY COMPILE_OPTIONS -nofree)
+set_property(SOURCE ${CAPGEN_DEPENDENCIES} APPEND PROPERTY COMPILE_OPTIONS -nofree)
 
 ####################################################################################
 # END CCPP FRAMEWORK
