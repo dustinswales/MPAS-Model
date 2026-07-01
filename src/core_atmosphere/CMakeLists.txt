@@ -509,8 +509,9 @@ include(${CMAKE_SOURCE_DIR}/src/core_atmosphere/ccpp/cmake/ccpp_capgen.cmake)
 set(SCHEME_FILES_DIR "${CMAKE_SOURCE_DIR}/src/core_atmosphere/ccpp/ccpp-physics/physics")
 set(SCHEME_METADATA_FILES
   "${SCHEME_FILES_DIR}/Interstitials/MPAS/MPAS_setup.meta"
-  #"${SCHEME_FILES_DIR}/Interstitials/MPAS/MPAS_PBL_generic_pre.meta"
+  "${SCHEME_FILES_DIR}/Interstitials/MPAS/MPAS_PBL_generic_pre.meta"
   "${SCHEME_FILES_DIR}/Interstitials/MPAS/MPAS_PBL_generic_post.meta"
+  "${SCHEME_FILES_DIR}/PBL/SATMEDMF/satmedmfvdifq.meta"
 )
 
 # Create list of scheme source files from metadata files
@@ -522,6 +523,7 @@ ccpp_source_files(SCHEME_FORTRAN_FILES ${SCHEME_METADATA_FILES})
 set(HOST_FILES_DIR "${CMAKE_SOURCE_DIR}/src/core_atmosphere/ccpp")
 set(HOST_METADATA_FILES
    "${HOST_FILES_DIR}/data/MPAS_typedefs.meta"
+   "${SCHEME_FILES_DIR}/hooks/physcons.meta"
    "${HOST_FILES_DIR}/CCPP_driver.meta"
 )
 
