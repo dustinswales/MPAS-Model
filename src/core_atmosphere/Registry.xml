@@ -616,24 +616,6 @@
 			<var name="tslb"/>
 			<var name="h_oml_initial"/>
 #endif
-#ifdef MPAS_UFS_DYCORE
-                        <var name="swdnb"/>
-			<var name="swdnbc"/>
-			<var name="swdnt"/>
-			<var name="swdntc"/>
-			<var name="swupb"/>
-			<var name="swupbc"/>
-			<var name="swupt"/>
-			<var name="swuptc"/>
-			<var name="lwdnb"/>
-			<var name="lwdnbc"/>
-			<var name="lwdnt"/>
-			<var name="lwdntc"/>
-			<var name="lwupb"/>
-			<var name="lwupbc"/>
-			<var name="lwupt"/>
-			<var name="lwuptc"/>
-#endif
 		</stream>
 
 		<stream name="restart" 
@@ -4250,6 +4232,36 @@
 
                 <var name="lwuptc" type="real" dimensions="nCells Time" units="W m^{-2}"
                      description="clear-sky upward top-of-the-atmosphere longwave radiation flux"/>
+
+                <var name="refl10cm" type="real" dimensions="nVertLevels nCells Time" units="dBZ"
+                     description="10 cm radar reflectivity"/>
+
+                <var name="raincv" type="real" dimensions="nCells Time" units="mm"
+                     description="time-step convective precipitation"/>
+
+		<var name="rainncv" type="real" dimensions="nCells Time" units="mm"
+		     description="time-step total grid-scale precipitation"/>
+
+		<var name="snowncv" type="real" dimensions="nCells Time" units="mm"
+                     description="time-step grid-scale precipitation of snow"/>
+
+                <var name="graupelncv" type="real" dimensions="nCells Time" units="mm"
+                     description="time-step grid-scale precipitation of graupel"/>
+
+                <var name="rainc" type="real" dimensions="nCells Time" units="mm"
+                     description="accumulated convective precipitation"/>
+
+                <var name="rainnc" type="real" dimensions="nCells Time" units="mm"
+                     description="accumulated total grid-scale precipitation"/>
+
+                <var name="frainnc" type="real" dimensions="nCells Time" units="mm"
+                     description="accumulated total grid-scale freezing rain"/>
+
+		<var name="snownc" type="real" dimensions="nCells Time" units="mm"
+                     description="accumulated grid-scale precipitation of snow"/>
+
+                <var name="graupelnc" type="real" dimensions="nCells Time" units="mm"
+                     description="accumulated grid-scale precipitation of graupel"/>
 	</var_struct>
 #endif
         <var_struct name="tend_physics" time_levs="1">
