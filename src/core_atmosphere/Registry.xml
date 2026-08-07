@@ -4262,6 +4262,15 @@
 
                 <var name="graupelnc" type="real" dimensions="nCells Time" units="mm"
                      description="accumulated grid-scale precipitation of graupel"/>
+
+                <var name="re_cloud" type="real" dimensions="nVertLevels nCells Time" units="m"
+                     description="effective radius of cloud water droplets"/>
+
+                <var name="re_ice"  type="real" dimensions="nVertLevels nCells Time"  units="m"
+                     description="effective radius of cloud ice crystals"/>
+
+                <var name="re_snow" type="real" dimensions="nVertLevels nCells Time"  units="m"
+                     description="effective radius of snow crystals"/>
 	</var_struct>
 #endif
         <var_struct name="tend_physics" time_levs="1">
