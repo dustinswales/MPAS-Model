@@ -2603,6 +2603,21 @@
               units="-"
               description="number of months per year"
               possible_values="Positive integer values. DO NOT CHANGE."/>
+
+  <nml_option name="config_lsm_scheme" type="character" default_value="suite" in_defaults="false"
+              units="-"
+              description="configuration for land-surface schemes"
+              possible_values="`suite',`sf_noah',`sf_ruc',`sf_noahmp`, `off'"/>
+
+  <nml_option name="config_frac_seaice" type="logical" default_value="true" in_defaults="false"
+              units="-"
+              description="logical for configuration of fractional sea-ice"
+              possible_values=".true. for sea-ice between 0 or 1; .false. for sea-ice equal to 0 or 1 (flag)."/>
+
+  <nml_option name="config_sfc_albedo" type="logical" default_value="true" in_defaults="false"
+              units="-"
+              description="logical for configuration of surface albedo"
+              possible_values=".true. for climatologically varying surface albedo; .false. for fixed input data"/>
 </nml_record>
 #endif
 
@@ -4271,6 +4286,43 @@
 
                 <var name="re_snow" type="real" dimensions="nVertLevels nCells Time"  units="m"
                      description="effective radius of snow crystals"/>
+
+                <var name="sfc_albedo" type="real" dimensions="nCells Time" units="unitless"
+                     description="surface albedo"/>
+
+                <var name="sfc_emiss" type="real" dimensions="nCells Time" units="unitless"
+                     description="surface emissivity"/>
+
+                <var name="sfc_emibck" type="real" dimensions="nCells Time" units="unitless"
+                     description="background surface emissivity"/>
+
+                <var name="spp_lsm_loc" type="integer" dimensions="" units=""
+                    description="use spoil property perturbations; 1 or 0; Hardcoded to 0 for now"/>
+
+		<var name="mosaic_lu" type="integer" dimensions="" units=""
+                    description="use fractional landuse categories; 1 or 0; Hardcoded to 1 for now"/>
+
+                <var name="mosaic_soil" type="integer" dimensions="" units=""
+                    desciption="use fractional soil categories; 1 or 0; Hardcoded to 1 for now"/>
+
+                <var name="mavail" type="real" dimensions="nCells Time" units="unitless"
+                     description="surface moisture availability (between 0 and 1)"/>
+
+		<var name="thc" type="real" dimensions="nCells Time" units="Cal cm^{-2} K^{-1} s^{-0.5}"
+                     description="thermal inertia"/>
+
+		<var name="ust" type="real" dimensions="nCells Time" units="m s^{-1}"
+                     description="U* in similarity theory"/>
+
+		<var name="xicem" type="real" dimensions="nCells Time" units="unitless"
+                     description="sea-ice flag from previsous time-step"/>
+
+		<var name="z0" type="real" dimensions="nCells Time" units="m"
+                     description="roughness height"/>
+
+                <var name="znt" type="real" dimensions="nCells Time" units="m"
+                     description="roughness length"/>
+
 	</var_struct>
 #endif
         <var_struct name="tend_physics" time_levs="1">
@@ -4500,10 +4552,10 @@
 		<var name="ivgtyp" type="integer" dimensions="nCells" units="unitless"
                      description="dominant vegetation category"/>
 
-		<var name="isice_lu" name_in_code="isice" type="integer" dimensions="" units="unitless" default_value="24"
+		<var name="isice_lu" type="integer" dimensions="" units="unitless" default_value="24"
                      description="Index category for snow/ice"/>
 
-		<var name="iswater_lu" name_in_code="iswater" type="integer" dimensions="" units="unitless" default_value="16"
+		<var name="iswater_lu" type="integer" dimensions="" units="unitless" default_value="16"
                      description="Index category for water"/>
 
 		<var name="landmask" type="integer"  dimensions="nCells" units="unitless"
