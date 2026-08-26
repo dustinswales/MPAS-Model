@@ -32,17 +32,17 @@
                      description="The number of atmospheric layers"/>
                 <dim name="nVertLevelsP1"      definition="nVertLevels+1"
                      description="The number of atmospheric levels, always one more than the number of layers"/>
-#ifdef MPAS_UFS_DYCORE
-		<dim name="nSoilLevels"        definition="namelist:num_soil_layers"
-                     description="The number of soil layers used by the land-surface scheme"/>
-		<dim name="nMonths"            definition="namelist:months"
-                     description="The number of months in a year"/>
-#endif
-#ifdef DO_PHYSICS
+#if defined(DO_PHYSICS) || defined(MPAS_UFS_DYCORE)
                 <dim name="nMonths"            definition="namelist:months"
                      description="The number of months in a year"/>
                 <dim name="nSoilLevels"        definition="namelist:num_soil_layers"
                      description="The number of soil layers used by the land-surface scheme"/>
+                <dim name="nlcat"
+                    description="Number of landuse categories in the input data"/>
+                <dim name="nscat"
+                     description="Number of soil categories in the input data"/>
+#endif
+#ifdef DO_PHYSICS		
                 <dim name="nLags"              definition="namelist:input_soil_temperature_lag"
                      description="The number of days affecting the deep soil temperature"/>
                 <dim name="nOznLevels"         definition="namelist:noznlev"
@@ -53,10 +53,6 @@
                      description="dimension of CAM radiation absorption save array"/>
                 <dim name="nVertLevelsP2"      definition="nVertLevels+2"
                      description="Two more than the number of atmospheric layers"/>
-		<dim name="nlcat"
-		    description="Number of landuse categories in the input data"/>
-		<dim name="nscat"
-                    description="Number of soil categories in the input data"/>
                 <dim name="lat"
                     description="Number of latitude points in the input ugwp_limb_tau NGW file"/>
                 <dim name="days"
@@ -4546,6 +4542,9 @@
 		<var name="dzs" type="real" dimensions="nSoilLevels nCells Time" units="m"
                     description="soil layer thickness"/>
 
+                <var name="zs" type="real" dimensions="nSoilLevels nCells Time" units="m"
+                     description="depth of centers of soil layers"/>
+
 		<var name="isltyp" type="integer" dimensions="nCells" units="unitless"
                      description="dominant soil category"/>
 
@@ -4615,6 +4614,9 @@
 		<var name="shdmax" type="real" dimensions="nCells" units="percent"
                      description="maximum fractional coverage of annual green vegetation fraction"/>
 
+                <var name="soiltemp" type="real" dimensions="nCells" units="K"
+                     description="annual mean deep soil temperature"/>
+
 		<var name="snoalb" type="real"  dimensions="nCells" units="unitless"
                      description="annual maximum snow albedo"/>
 
@@ -4623,6 +4625,18 @@
 
 		<var name="albedo12m" type="real" dimensions="nMonths nCells" units="percent"
                      description="monthly-mean climatological surface albedo"/>
+
+                <var name="canwat" type="real" dimensions="nCells Time" units="kg m^{-2}"
+                     description="water in canopy"/>
+
+                <var name="soilf" type="real" dimensions="nscat nCells" units="unitless"
+                     description="fraction of each soil category present"/>
+
+		<var name="landusef" type="real" dimensions="nlcat nCells" units="unitless"
+                     description="fraction of each vegetation category present"/>
+
+                <var name="lai12m" type="real" dimensions="nMonths nCells" units="unitless"
+                     description="monthly-mean climatological leaf area index"/>
 
                 <!-- ================================================================================================== -->
                 <!-- ... PARAMETERIZATION OF GRAVITY WAVE DRAG OVER OROGRAPHY:                                          -->
